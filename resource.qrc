@@ -1,0 +1,11 @@
+<RCC>
+    <qresource prefix="/text">
+        <file>resources/about.txt</file>
+    </qresource>
+    <qresource prefix="/img">
+        <file>resources/about_icon.png</file>
+        <file>resources/main_icon.png</file>
+        <file>resources/main_img.jpg</file>
+        <file>resources/process.png</file>
+    </qresource>
+</RCC>
