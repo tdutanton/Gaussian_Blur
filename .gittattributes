@@ -1,0 +1,12 @@
+*.cpp linguist-language=C++
+*.h linguist-language=C++
+
+*.tex linguist-documentation
+*.js linguist-documentation
+*.css linguist-documentation
+*.html linguist-documentation
+documentation_release/** linguist-documentation
+
+*.png linguist-documentation
+*.PNG linguist-documentation
+*.jpg linguist-documentation
