@@ -7,6 +7,17 @@ Needed - QT version 5 min
 
 ![Screenshot_2](./readme_src/blured.PNG)  
 
+## Table of Contents
+1. [Project Description](#gaussian-blur-image-processor)
+2. [Features](#features)
+3. [Menu Structure](#menu-structure)
+4. [Filter Tab](#filter-tab)
+5. [Technologies Used](#technologies-used)
+6. [Build Instructions](#build-instructions)
+    - [Windows](#windows)
+    - [Linux](#linux)
+7. [Author](#author)
+
 # Gaussian Blur Image Processor
 
 A C++ application for applying Gaussian blur to images in BMP, JPG, or PNG formats (8 and 24 bits per pixel). Developed as a test assignment for the position of Software Engineer.
@@ -51,7 +62,6 @@ A C++ application for applying Gaussian blur to images in BMP, JPG, or PNG forma
 ## Build Instructions
 
 ### Windows
-
 1. Clone the repository:
    ```bash
    git clone ... (insert .git link here)
@@ -68,6 +78,27 @@ A C++ application for applying Gaussian blur to images in BMP, JPG, or PNG forma
 4. Clean:
    ```bash
    .\clean.ps1
+
+### Linux
+1. Clone the repository:
+   ```bash
+   git clone ... (insert .git link here)
+   cd gaussian_blur
+
+2. Build:
+   ```bash
+   chmod +x ./build_linux.sh
+   ./build_linux.sh
+
+3. Run:
+   ```bash
+   chmod +x ./run_linux.sh
+   ./run_linux.sh
+
+4. Clean:
+   ```bash
+   chmod +x ./clean_linux.sh
+   ./clean_linux.sh
 
 ## Author
 - [Anton Evgenev](https://t.me/tdutanton)
