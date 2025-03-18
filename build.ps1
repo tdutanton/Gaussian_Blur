@@ -1,3 +1,15 @@
+$currentPolicy = Get-ExecutionPolicy
+
+if ($currentPolicy -ne "RemoteSigned") {
+    Write-Host "Current ExecutionPolicy: $currentPolicy"
+    Write-Host "Set ExecutionPolicy RemoteSigned..."
+
+    Set-ExecutionPolicy RemoteSigned -Scope LocalMachine -Force
+}
+else {
+    Write-Host "ExecutionPolicy correct"
+}
+
 $buildDir = "build"
 if (Test-Path $buildDir) {
     Write-Host "Deleting build folder"
