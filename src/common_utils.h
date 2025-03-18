@@ -21,4 +21,13 @@ static constexpr unsigned short default_width_ = 800;
 
 BPP get_image_bpp(const QImage& img);
 
+template<typename T>
+inline auto getPixmap(T* label) -> decltype(auto) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    return label->pixmap();
+#else
+    return *(label->pixmap());
+#endif
+}
+
 #endif  // COMMON_UTILS_H

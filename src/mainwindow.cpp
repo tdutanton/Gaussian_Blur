@@ -192,7 +192,7 @@ void MainWindow::open_image() {
 }
 
 void MainWindow::save_image() {
-  if (blured_image_label_->pixmap()->isNull()) is_save_available_ = false;
+  if (getPixmap(blured_image_label_).isNull()) is_save_available_ = false;
   if (!is_save_available_) {
     ModalDialog::show(dialog_type::error, err,
                       "Нет изображения для сохранения");
@@ -212,7 +212,7 @@ void MainWindow::save_image() {
     } else if (filename.endsWith(".bmp", Qt::CaseInsensitive)) {
       format = "BMP";
     }
-    QImage image = blured_image_label_->pixmap()->toImage();
+    QImage image = getPixmap(blured_image_label_).toImage();
     if (!image.save(filename, format.toUtf8().constData())) {
       ModalDialog::show(dialog_type::error, err,
                         "Ошибка сохранения изображения");
@@ -221,7 +221,7 @@ void MainWindow::save_image() {
 }
 
 void MainWindow::blur_image() {
-  if (raw_image_label_->pixmap()) {
+  if (!getPixmap(raw_image_label_).isNull()) {
     if (original_image_.isNull()) {
       ModalDialog::show(dialog_type::error, err,
                         "Отсутствует файл для обработки");
@@ -234,7 +234,7 @@ void MainWindow::blur_image() {
       save_action_->setDisabled(false);
       return;
     }
-    QImage new_img = raw_image_label_->pixmap()->toImage();
+    QImage new_img = getPixmap(raw_image_label_).toImage();
     OneDKernel kernel = OneDKernel(radius_panel_->get_radius());
 
     ProgressBarBlur *prg = new ProgressBarBlur(this);

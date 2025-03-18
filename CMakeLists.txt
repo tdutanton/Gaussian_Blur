@@ -15,8 +15,16 @@ set(CMAKE_AUTORCC ON)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-#set(CMAKE_PREFIX_PATH "C:/Qt/Qt5.12.12/5.12.12/msvc2017") - если не собирается - указать путь к Qt
-find_package(Qt5 REQUIRED COMPONENTS Core Gui Widgets)
+
+execute_process(
+    COMMAND qmake -query QT_INSTALL_PREFIX
+    OUTPUT_VARIABLE QT_DIR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+set(CMAKE_PREFIX_PATH ${QT_DIR})
+
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets) # for Qt6
+#find_package(Qt5 REQUIRED COMPONENTS Core Gui Widgets) # for Qt5
 
 set(PROJECT_SOURCES
         src/main.cpp
@@ -47,7 +55,8 @@ set(PROJECT_SOURCES
 add_executable(gaussian_blur ${PROJECT_SOURCES})
 
 
-target_link_libraries(gaussian_blur PRIVATE Qt5::Widgets)
+target_link_libraries(gaussian_blur PRIVATE Qt6::Widgets) # for Qt6
+#target_link_libraries(gaussian_blur PRIVATE Qt6::Widgets) # for Qt5
 
 set_target_properties(gaussian_blur PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com
