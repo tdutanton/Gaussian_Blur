@@ -3,9 +3,9 @@ Gaussian Blur Project
 
 Needed - QT version 5 min  
 
-![Screenshot](./readme_src/clean.png)  
+![Screenshot](./readme_src/clean.PNG)  
 
-![Screenshot_2](./readme_src/blured.png)  
+![Screenshot_2](./readme_src/blured.PNG)  
 
 # Gaussian Blur Image Processor
 
