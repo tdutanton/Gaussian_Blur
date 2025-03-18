@@ -54,7 +54,7 @@ A C++ application for applying Gaussian blur to images in BMP, JPG, or PNG forma
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-repo/gaussian_blur.git
+   git clone ... (insert .git link here)
    cd gaussian_blur
 
 2. Build:
