@@ -44,7 +44,7 @@ A C++ application for applying Gaussian blur to images in BMP, JPG, or PNG forma
 ## Technologies Used
 
 - **C++17**
-- **Qt 6** (Widgets, Multithreading, QSettings, QFileDialog)
+- **Qt 5** (Widgets, Multithreading, QSettings, QFileDialog)
 - **CMake** (for cross-platform builds)
 - **PowerShell Scripts** for build and cleanup automation (Windows)
 
