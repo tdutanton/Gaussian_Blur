@@ -20,6 +20,8 @@ void ProgressBarBlur::get_max_progress(quint64 value) { max_progress_ = value; }
 
 void ProgressBarBlur::update_process(quint64 value) {
   int normalized_progress = static_cast<int>((value * 100) / max_progress_);
-  normalized_progress = qMin(normalized_progress, 100);
+  if (value >= max_progress_ || normalized_progress >= 100) {
+    normalized_progress = 100;
+  }
   process_->setValue(normalized_progress);
 }
