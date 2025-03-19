@@ -23,8 +23,8 @@ execute_process(
 )
 set(CMAKE_PREFIX_PATH ${QT_DIR})
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets) # for Qt6
-#find_package(Qt5 REQUIRED COMPONENTS Core Gui Widgets) # for Qt5
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Concurrent) # for Qt6
+#find_package(Qt5 REQUIRED COMPONENTS Core Gui Widgets Concurrent) # for Qt5
 
 set(PROJECT_SOURCES
         src/main.cpp
@@ -55,8 +55,8 @@ set(PROJECT_SOURCES
 add_executable(gaussian_blur ${PROJECT_SOURCES})
 
 
-target_link_libraries(gaussian_blur PRIVATE Qt6::Widgets) # for Qt6
-#target_link_libraries(gaussian_blur PRIVATE Qt6::Widgets) # for Qt5
+target_link_libraries(gaussian_blur PRIVATE Qt6::Widgets Qt6::Core Qt6::Concurrent) # for Qt6
+#target_link_libraries(gaussian_blur PRIVATE Qt5::Widgets Qt5::Core Qt5::Concurrent) # for Qt5
 
 set_target_properties(gaussian_blur PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com
