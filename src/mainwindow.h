@@ -4,6 +4,7 @@
 #include <QBoxLayout>
 #include <QDebug>
 #include <QFileDialog>
+#include <QFuture>
 #include <QImageReader>
 #include <QInputDialog>
 #include <QLabel>
@@ -15,6 +16,7 @@
 #include <QScrollArea>
 #include <QThread>
 #include <QWidget>
+#include <QtConcurrent/QtConcurrent>
 
 #include "bluredimage.h"
 #include "common_utils.h"
@@ -66,7 +68,6 @@ class MainWindow : public QMainWindow {
 
   bool is_save_available_ = true;
 
-  QMap<unsigned short, QImage> blur_cache_;
   unsigned short current_radius_ = 0;
   QImage original_image_;
 
