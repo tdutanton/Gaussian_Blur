@@ -105,42 +105,48 @@ void MainWindow::add_main_picture() {
   main_page_img_->setAlignment(Qt::AlignVCenter);
 }
 
-void MainWindow::set_blur_connections(ProgressBarBlur *bar, BluredImage *img,
-                                      QImage &res_img, QThread *thread,
-                                      OneDKernel &kernel) {
+void MainWindow::set_blur_connections(ProgressBarBlur *bar,
+                                      BluredImage *blured_img, QImage &res_img,
+                                      QThread *thread, OneDKernel &kernel) {
   // cancel connections
   connect(bar, &ProgressBarBlur::click_cancel, thread,
           &QThread::requestInterruption);
   connect(bar, &ProgressBarBlur::click_cancel, this, &MainWindow::block_saving);
-  connect(img, &BluredImage::show_error, this, [](const QString &message) {
-    ModalDialog::show(dialog_type::error, err, message);
-  });
+  connect(blured_img, &BluredImage::show_error, this,
+          [](const QString &message) {
+            ModalDialog::show(dialog_type::error, err, message);
+          });
+
+  // get blur time
+  connect(blured_img, &BluredImage::send_blur_time, radius_panel_,
+          &RadiusControlPanel::get_blur_time);
 
   // thread finish connections
-  connect(thread, &QThread::finished, img, &BluredImage::deleteLater);
+  connect(thread, &QThread::finished, blured_img, &BluredImage::deleteLater);
   connect(thread, &QThread::finished, thread, &QThread::deleteLater);
 
   // set saving available after processing
-  connect(img, &BluredImage::process_complete, this,
+  connect(blured_img, &BluredImage::process_complete, this,
           &MainWindow::enable_to_save);
 
   // progress bar exchng
-  connect(img, &BluredImage::set_max_progress, bar,
+  connect(blured_img, &BluredImage::set_max_progress, bar,
           &ProgressBarBlur::get_max_progress);
-  connect(img, &BluredImage::send_progress, bar,
+  connect(blured_img, &BluredImage::send_progress, bar,
           &ProgressBarBlur::update_process);
 
   // main connections
-  connect(img, &BluredImage::process_complete, this, [this, img]() {
-    if (!QThread::currentThread()->isInterruptionRequested()) {
-      QImage blured = img->get_image();
-      blured_image_label_->setPixmap(QPixmap::fromImage(blured));
-      blur_cache_.insert(current_radius_, blured);
-      if (is_save_available_) save_action_->setDisabled(false);
-    }
-  });
-  connect(thread, &QThread::started, [img, res_img, kernel]() {
-    img->process_image(res_img, kernel, nullptr);
+  connect(blured_img, &BluredImage::process_complete, this,
+          [this, blured_img]() {
+            if (!QThread::currentThread()->isInterruptionRequested()) {
+              QImage blured = blured_img->get_image();
+              blured_image_label_->setPixmap(QPixmap::fromImage(blured));
+              if (is_save_available_) save_action_->setDisabled(false);
+            }
+          });
+
+  connect(thread, &QThread::started, [blured_img, res_img, kernel]() {
+    blured_img->process_image(res_img, kernel, nullptr);
   });
 }
 
@@ -154,10 +160,10 @@ void MainWindow::create_filter_bar() {
 
 void MainWindow::compose_widgets(QWidget *wgt) {
   QVBoxLayout *right_layout = new QVBoxLayout;
-  right_layout->setContentsMargins(10, 10, 10, 10);
+  right_layout->setContentsMargins(1, 1, 1, 1);
   right_layout->setSpacing(10);
   right_layout->addStretch(1);
-  right_layout->addWidget(main_page_img_, 0, Qt::AlignCenter);
+  right_layout->addWidget(main_page_img_, 1, Qt::AlignCenter);
   right_layout->addStretch(1);
 
   QWidget *right_container_ = new QWidget(this);
@@ -166,8 +172,8 @@ void MainWindow::compose_widgets(QWidget *wgt) {
 
   QHBoxLayout *main_hbox_layout = new QHBoxLayout;
   main_hbox_layout->setContentsMargins(10, 10, 10, 10);
-  main_hbox_layout->setSpacing(10);
-  main_hbox_layout->addWidget(tabs_, 4);
+  main_hbox_layout->setSpacing(1);
+  main_hbox_layout->addWidget(tabs_, 6);
   main_hbox_layout->addWidget(right_container_, 1);
 
   wgt->setLayout(main_hbox_layout);
@@ -181,7 +187,6 @@ void MainWindow::open_image() {
     QImage image(filename);
     if (check_image(image)) {
       original_image_ = image;
-      blur_cache_.clear();
       QPixmap correct_image = QPixmap::fromImage(image);
       raw_image_label_->setPixmap(correct_image);
       blured_image_label_->setText(
@@ -192,7 +197,7 @@ void MainWindow::open_image() {
 }
 
 void MainWindow::save_image() {
-  if (getPixmap(blured_image_label_).isNull()) is_save_available_ = false;
+  if (blured_image_label_->pixmap()->isNull()) is_save_available_ = false;
   if (!is_save_available_) {
     ModalDialog::show(dialog_type::error, err,
                       "Нет изображения для сохранения");
@@ -212,7 +217,7 @@ void MainWindow::save_image() {
     } else if (filename.endsWith(".bmp", Qt::CaseInsensitive)) {
       format = "BMP";
     }
-    QImage image = getPixmap(blured_image_label_).toImage();
+    QImage image = blured_image_label_->pixmap()->toImage();
     if (!image.save(filename, format.toUtf8().constData())) {
       ModalDialog::show(dialog_type::error, err,
                         "Ошибка сохранения изображения");
@@ -221,29 +226,21 @@ void MainWindow::save_image() {
 }
 
 void MainWindow::blur_image() {
-  if (!getPixmap(raw_image_label_).isNull()) {
+  if (raw_image_label_->pixmap()) {
     if (original_image_.isNull()) {
       ModalDialog::show(dialog_type::error, err,
                         "Отсутствует файл для обработки");
     }
-
-    if (blur_cache_.contains(current_radius_)) {
-      QPixmap cached_pixmap =
-          QPixmap::fromImage(blur_cache_.value(current_radius_));
-      blured_image_label_->setPixmap(cached_pixmap);
-      save_action_->setDisabled(false);
-      return;
-    }
-    QImage new_img = getPixmap(raw_image_label_).toImage();
+    QImage new_img = raw_image_label_->pixmap()->toImage();
     OneDKernel kernel = OneDKernel(radius_panel_->get_radius());
 
     ProgressBarBlur *prg = new ProgressBarBlur(this);
     BluredImage *blured_img = new BluredImage();
+
     QThread *thread = new QThread();
-
-    blured_img->moveToThread(thread);
-
     set_blur_connections(prg, blured_img, new_img, thread, kernel);
+    blured_img->is_one_thread_mode(radius_panel_->is_one_thread_mode());
+    blured_img->moveToThread(thread);
 
     prg->run_progress();
 
