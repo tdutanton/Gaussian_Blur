@@ -1,13 +1,6 @@
 #include "onedkernel.h"
 
 OneDKernel::OneDKernel(unsigned short radius) {
-  if (radius < min_radius_ || radius > max_radius_) {
-    std::stringstream error_msg;
-    error_msg << "Ошибка. Допустимый диапазон - от " << min_radius_ << " до "
-              << max_radius_;
-    throw std::invalid_argument(error_msg.str());
-  }
-
   double sigma = calc_sigma(radius);
   kernel_size_ = calc_kernel_size(sigma);
   kernel_ = create_kernel_(radius, kernel_size_);
