@@ -2,6 +2,11 @@
 
 void BluredImage::process_image(const QImage &img, const OneDKernel &kernel,
                                 QObject *parent) {
+  if (QThread::currentThread()->isInterruptionRequested()) {
+    emit show_error("Обработка отменена");
+    emit process_complete();
+    return;
+  }
   QImage result = create_blured_image(img, kernel);
   if (!QThread::currentThread()->isInterruptionRequested()) {
     blured_image_ = result;

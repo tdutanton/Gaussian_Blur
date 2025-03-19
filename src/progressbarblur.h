@@ -7,6 +7,8 @@
 #include <QProgressDialog>
 #include <QTimer>
 #include <QWidget>
+#include <QThread>
+#include <QtConcurrent/QtConcurrent>
 
 class ProgressBarBlur : public QWidget {
   Q_OBJECT

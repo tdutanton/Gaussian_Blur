@@ -84,15 +84,9 @@ void RadiusControlPanel::on_radius_button_clicked() {
     ModalDialog::show(dialog_type::error, err, "Ошибка ввода радиуса");
 }
 
-void RadiusControlPanel::on_one_thread_clicked() {
-  qDebug() << "ONE T CLCK";
-  one_thread_mode_ = true;
-}
+void RadiusControlPanel::on_one_thread_clicked() { one_thread_mode_ = true; }
 
-void RadiusControlPanel::on_multi_thread_clicked() {
-  qDebug() << "MULTI T CLCK";
-  one_thread_mode_ = false;
-}
+void RadiusControlPanel::on_multi_thread_clicked() { one_thread_mode_ = false; }
 
 void RadiusControlPanel::get_blur_time(quint64 value) {
   blur_time_value_ = value;
