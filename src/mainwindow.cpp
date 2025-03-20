@@ -173,7 +173,7 @@ void MainWindow::compose_widgets(QWidget *wgt) {
   QHBoxLayout *main_hbox_layout = new QHBoxLayout;
   main_hbox_layout->setContentsMargins(10, 10, 10, 10);
   main_hbox_layout->setSpacing(1);
-  main_hbox_layout->addWidget(tabs_, 6);
+  main_hbox_layout->addWidget(tabs_, 8);
   main_hbox_layout->addWidget(right_container_, 1);
 
   wgt->setLayout(main_hbox_layout);
@@ -197,7 +197,7 @@ void MainWindow::open_image() {
 }
 
 void MainWindow::save_image() {
-  if (blured_image_label_->pixmap().isNull()) is_save_available_ = false;
+  if (getPixmap(blured_image_label_).isNull()) is_save_available_ = false;
   if (!is_save_available_) {
     ModalDialog::show(dialog_type::error, err,
                       "Нет изображения для сохранения");
@@ -217,7 +217,7 @@ void MainWindow::save_image() {
     } else if (filename.endsWith(".bmp", Qt::CaseInsensitive)) {
       format = "BMP";
     }
-    QImage image = blured_image_label_->pixmap().toImage();
+    QImage image = getPixmap(blured_image_label_).toImage();
     if (!image.save(filename, format.toUtf8().constData())) {
       ModalDialog::show(dialog_type::error, err,
                         "Ошибка сохранения изображения");
@@ -226,28 +226,29 @@ void MainWindow::save_image() {
 }
 
 void MainWindow::blur_image() {
-  if (!raw_image_label_->pixmap().isNull()) {
-    if (original_image_.isNull()) {
-      ModalDialog::show(dialog_type::error, err,
-                        "Отсутствует файл для обработки");
-    }
-    QImage new_img = raw_image_label_->pixmap().toImage();
+  if (original_image_.isNull()) {
+    ModalDialog::show(dialog_type::error, err,
+                      "Отсутствует файл для обработки");
+    return;
+  }
+  if (!getPixmap(raw_image_label_).isNull()) {
+    QImage new_img = getPixmap(raw_image_label_).toImage();
     OneDKernel kernel = OneDKernel(radius_panel_->get_radius());
 
     ProgressBarBlur *prg = new ProgressBarBlur(this);
     BluredImage *blured_img = new BluredImage();
-
     QThread *thread = new QThread();
+
     set_blur_connections(prg, blured_img, new_img, thread, kernel);
     blured_img->is_one_thread_mode(radius_panel_->is_one_thread_mode());
     blured_img->moveToThread(thread);
 
     prg->run_progress();
-
     thread->start();
-  } else
+  } else {
     ModalDialog::show(dialog_type::error, err,
                       "Отсутствует файл для обработки");
+  }
 }
 
 void MainWindow::open_about_tab() {
