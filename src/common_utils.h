@@ -2,6 +2,7 @@
 #define COMMON_UTILS_H
 
 #include <QImage>
+#include <QtGlobal>
 
 enum class BPP {
   bpp_8 = 8,
@@ -21,12 +22,12 @@ static constexpr unsigned short default_width_ = 800;
 
 BPP get_image_bpp(const QImage& img);
 
-template<typename T>
+template <typename T>
 inline auto getPixmap(T* label) -> decltype(auto) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-    return label->pixmap();
+  return label->pixmap();
 #else
-    return *(label->pixmap());
+  return *(label->pixmap());
 #endif
 }
 
