@@ -1,291 +1,200 @@
-#include "mainwindow.h"
+#include "bluredimage.h"
 
-MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
-  setWindowTitle("Gaussian Blur");
-  resize(default_width_, default_height_);
-  create_actions();
-  create_menu_bar();
-  create_filter_bar();
-  add_main_picture();
-  create_tabs();
-
-  QWidget *cntrl_wgt = new QWidget(this);
-  compose_widgets(cntrl_wgt);
-  setCentralWidget(cntrl_wgt);
-  this->setWindowIcon(QPixmap(":/img/resources/main_icon.png"));
-}
-
-MainWindow::~MainWindow() {}
-
-void MainWindow::create_menu_bar() {
-  menu_bar_ = this->menuBar();
-
-  file_menu_ = menu_bar_->addMenu("&Файл");
-  file_menu_->addAction(open_action_);
-  file_menu_->addSeparator();
-  file_menu_->addAction(save_action_);
-  file_menu_->addSeparator();
-  file_menu_->addAction(exit_action_);
-
-  about_menu_ = menu_bar_->addMenu("&О программе");
-
-  about_menu_->addAction(about_action_);
-}
-
-void MainWindow::create_actions() {
-  open_action_ = new QAction("Открыть...", this);
-  open_action_->setShortcut(QKeySequence::Open);
-  open_action_->setStatusTip("Открыть файл");
-
-  connect(open_action_, &QAction::triggered, this, &MainWindow::open_image);
-
-  save_action_ = new QAction("Сохранить...", this);
-  save_action_->setShortcut(QKeySequence::Save);
-  save_action_->setStatusTip("Сохранить файл");
-  save_action_->setDisabled(true);
-  connect(save_action_, &QAction::triggered, this, &MainWindow::save_image);
-
-  exit_action_ = new QAction("Выход", this);
-  exit_action_->setShortcut(QKeySequence::Close);
-  exit_action_->setStatusTip("Выход из программы");
-
-  connect(exit_action_, &QAction::triggered, this, &MainWindow::close);
-
-  about_action_ = new QAction("О программе", this);
-  about_action_->setStatusTip("Информация о программе");
-
-  connect(about_action_, &QAction::triggered, this,
-          &MainWindow::open_about_tab);
-}
-
-void MainWindow::create_tabs() {
-  tabs_ = new QTabWidget(this);
-
-  raw_image_label_ = new QLabel(this);
-  raw_image_label_->setText("Откройте изображение для обработки");
-  raw_image_label_->setAlignment(Qt::AlignCenter);
-  raw_image_scroll_ = new QScrollArea(this);
-  raw_image_scroll_->setWidget(raw_image_label_);
-  raw_image_scroll_->setWidgetResizable(true);
-  tabs_->addTab(raw_image_scroll_, "Изображение");
-
-  QWidget *blur_container = new QWidget(this);
-  QVBoxLayout *blur_layout = new QVBoxLayout;
-  blured_image_label_ = new QLabel(this);
-  blured_image_label_->setText("Откройте изображение для обработки");
-  blured_image_label_->setAlignment(Qt::AlignCenter);
-  blured_image_scroll_ = new QScrollArea(this);
-  blured_image_scroll_->setWidget(blured_image_label_);
-  blured_image_scroll_->setWidgetResizable(true);
-
-  blur_layout->addWidget(radius_panel_);
-  blur_layout->addWidget(blured_image_scroll_);
-  blur_container->setLayout(blur_layout);
-
-  tabs_->addTab(blur_container, "Фильтр");
-
-  connect(tabs_, &QTabWidget::currentChanged, this,
-          &MainWindow::on_tab_changed);
-  tabs_->setMinimumSize(tabs_->sizeHint());
-}
-
-void MainWindow::on_tab_changed(int index) {
-  if (tabs_->tabText(index) == "Фильтр")
-    radius_panel_->show();
-  else
-    radius_panel_->hide();
-}
-
-void MainWindow::add_main_picture() {
-  main_page_img_ = new QLabel(this);
-  QPixmap pixmap(":/img/resources/main_img.jpg");
-  QPixmap scaled_img = pixmap.scaled(150, 200, Qt::KeepAspectRatio);
-  main_page_img_->setPixmap(scaled_img);
-  main_page_img_->setScaledContents(false);
-  main_page_img_->setAlignment(Qt::AlignVCenter);
-}
-
-void MainWindow::set_blur_connections(ProgressBarBlur *bar,
-                                      BluredImage *blured_img, QImage &res_img,
-                                      QThread *thread, OneDKernel &kernel) {
-  // cancel connections
-  connect(bar, &ProgressBarBlur::click_cancel, thread,
-          &QThread::requestInterruption);
-  connect(bar, &ProgressBarBlur::click_cancel, this, &MainWindow::block_saving);
-  connect(blured_img, &BluredImage::show_error, this,
-          [](const QString &message) {
-            ModalDialog::show(dialog_type::error, err, message);
-          });
-
-  // get blur time
-  connect(blured_img, &BluredImage::send_blur_time, radius_panel_,
-          &RadiusControlPanel::get_blur_time);
-
-  // thread finish connections
-  connect(thread, &QThread::finished, blured_img, &BluredImage::deleteLater);
-  connect(thread, &QThread::finished, thread, &QThread::deleteLater);
-
-  // set saving available after processing
-  connect(blured_img, &BluredImage::process_complete, this,
-          &MainWindow::enable_to_save);
-
-  // progress bar exchng
-  connect(blured_img, &BluredImage::set_max_progress, bar,
-          &ProgressBarBlur::get_max_progress);
-  connect(blured_img, &BluredImage::send_progress, bar,
-          &ProgressBarBlur::update_process);
-
-  // main connections
-  connect(blured_img, &BluredImage::process_complete, this,
-          [this, blured_img]() {
-            if (!QThread::currentThread()->isInterruptionRequested()) {
-              QImage blured = blured_img->get_image();
-              blured_image_label_->setPixmap(QPixmap::fromImage(blured));
-              if (is_save_available_) save_action_->setDisabled(false);
-            }
-          });
-
-  connect(thread, &QThread::started, [blured_img, res_img, kernel]() {
-    blured_img->process_image(res_img, kernel, nullptr);
-  });
-}
-
-void MainWindow::create_filter_bar() {
-  radius_panel_ = new RadiusControlPanel(this);
-  radius_panel_->hide();
-
-  connect(radius_panel_, &RadiusControlPanel::radius_changed, this,
-          &MainWindow::update_radius);
-}
-
-void MainWindow::compose_widgets(QWidget *wgt) {
-  QVBoxLayout *right_layout = new QVBoxLayout;
-  right_layout->setContentsMargins(1, 1, 1, 1);
-  right_layout->setSpacing(10);
-  right_layout->addStretch(1);
-  right_layout->addWidget(main_page_img_, 1, Qt::AlignCenter);
-  right_layout->addStretch(1);
-
-  QWidget *right_container_ = new QWidget(this);
-  right_container_->setLayout(right_layout);
-  right_container_->setMinimumSize(right_container_->sizeHint());
-
-  QHBoxLayout *main_hbox_layout = new QHBoxLayout;
-  main_hbox_layout->setContentsMargins(10, 10, 10, 10);
-  main_hbox_layout->setSpacing(1);
-  main_hbox_layout->addWidget(tabs_, 8);
-  main_hbox_layout->addWidget(right_container_, 1);
-
-  wgt->setLayout(main_hbox_layout);
-}
-
-void MainWindow::open_image() {
-  QString filename = QFileDialog::getOpenFileName(
-      this, "Открыть изображение", "../../../gaussian_blur/img_examples",
-      "Images (*.bmp *.jpg *.png)");
-  if (!filename.isEmpty()) {
-    QImage image(filename);
-    if (check_image(image)) {
-      original_image_ = image;
-      QPixmap correct_image = QPixmap::fromImage(image);
-      raw_image_label_->setPixmap(correct_image);
-      blured_image_label_->setText(
-          "Установите радиус размытия и примените обработку");
-    }
-  } else
-    ModalDialog::show(dialog_type::error, err, "Ошибка загрузки изображения");
-}
-
-void MainWindow::save_image() {
-  if (getPixmap(blured_image_label_).isNull()) is_save_available_ = false;
-  if (!is_save_available_) {
-    ModalDialog::show(dialog_type::error, err,
-                      "Нет изображения для сохранения");
+void BluredImage::process_image(const QImage &img, const OneDKernel &kernel,
+                                QObject *parent) {
+  QImage result = create_blured_image(img, kernel);
+  if (!QThread::currentThread()->isInterruptionRequested()) {
+    blured_image_ = result;
+    emit process_complete();
   } else {
-    QString filename = QFileDialog::getSaveFileName(
-        this, "Сохранить изображение", "",
-        "PNG (*.png);;JPEG (*.jpg *.jpeg);;BMP (*.bmp)");
-    if (filename.isEmpty()) {
-      return;
+    emit show_error("Обработка отменена");
+    emit process_complete();
+  }
+}
+
+bool BluredImage::need_bpp_convert(const BPP &bpp) {
+  return (bpp == BPP::bpp_8);
+}
+
+void BluredImage::convert_bpp(QImage &img) {
+  img = img.convertToFormat(QImage::Format_RGB32);
+}
+
+QImage BluredImage::create_blured_image(const QImage &img,
+                                        const OneDKernel &kernel) {
+  QElapsedTimer timer;
+  timer.start();
+  QImage result = img;
+  if (need_bpp_convert(get_image_bpp(result))) convert_bpp(result);
+  emit set_max_progress(img.height() * img.width() * 2);
+  int pixels_count{0};
+  BlurPassFunctionPtr blur_ptr =
+      (one_thread_mode_ == true) ? &BluredImage::apply_blur_pass_one_thread
+                                 : &BluredImage::apply_blur_pass_multithread;
+
+  if (!QThread::currentThread()->isInterruptionRequested())
+    result = (this->*blur_ptr)(result, kernel, true, pixels_count);
+  if (!QThread::currentThread()->isInterruptionRequested())
+    result = (this->*blur_ptr)(result, kernel, false, pixels_count);
+  quint64 elapsed = timer.elapsed();
+  emit(send_blur_time(elapsed));
+  return result;
+}
+
+QImage BluredImage::apply_blur_pass_multithread(const QImage &img,
+                                                const OneDKernel &kernel,
+                                                bool horizontal, int &pixels) {
+  QImage result(img.size(), img.format());
+
+  int img_height = img.height();
+  int img_width = img.width();
+  int kernel_size = kernel.get_kernel_size();
+  int radius = kernel_size / 2;
+
+  std::vector<double> kernel_values(kernel_size);
+  for (int i = 0; i < kernel_size; i++) {
+    kernel_values[i] = kernel.get_kernel_value(i);
+  }
+
+  // Используем блочную обработку
+  const int block_size = 16;  // Размер блока для обработки
+  const int blocks_x = (img_width + block_size - 1) / block_size;
+  const int blocks_y = (img_height + block_size - 1) / block_size;
+  const int total_blocks = blocks_x * blocks_y;
+
+  std::atomic<int> processed_blocks{0};
+  std::atomic<int> processed_pixels{0};
+
+  // Используем мьютекс только для отправки сигналов
+  QMutex progress_mutex;
+  QElapsedTimer progress_timer;
+  progress_timer.start();
+
+  auto process_block = [&](int block_idx) {
+    if (QThread::currentThread()->isInterruptionRequested()) return;
+
+    int block_y = block_idx / blocks_x;
+    int block_x = block_idx % blocks_x;
+
+    int y_start = block_y * block_size;
+    int y_end = std::min(y_start + block_size, img_height);
+    int x_start = block_x * block_size;
+    int x_end = std::min(x_start + block_size, img_width);
+
+    int local_pixel_count = 0;
+
+    for (int y = y_start; y < y_end; y++) {
+      QRgb *result_line = reinterpret_cast<QRgb *>(result.scanLine(y));
+
+      for (int x = x_start; x < x_end; x++) {
+        double r = 0.0, g = 0.0, b = 0.0;
+
+        for (int k = -radius; k <= radius; k++) {
+          int px{0}, py{0};
+          if (horizontal) {
+            px = qBound(0, x + k, img_width - 1);
+            py = y;
+          } else {
+            px = x;
+            py = qBound(0, y + k, img_height - 1);
+          }
+
+          const QRgb *source_line =
+              reinterpret_cast<const QRgb *>(img.scanLine(py));
+          QRgb pixel = source_line[px];
+
+          double weight = kernel_values[k + radius];
+          apply_kernel_on_pixel(weight, pixel, r, g, b);
+        }
+
+        result_line[x] = qRgb(r, g, b);
+        local_pixel_count++;
+      }
     }
-    QString format;
-    if (filename.endsWith(".png", Qt::CaseInsensitive)) {
-      format = "PNG";
-    } else if (filename.endsWith(".jpg", Qt::CaseInsensitive) ||
-               filename.endsWith(".jpeg", Qt::CaseInsensitive)) {
-      format = "JPEG";
-    } else if (filename.endsWith(".bmp", Qt::CaseInsensitive)) {
-      format = "BMP";
+
+    // Увеличиваем счетчик обработанных пикселей
+    processed_pixels.fetch_add(local_pixel_count, std::memory_order_relaxed);
+
+    // Увеличиваем счетчик обработанных блоков
+    int blocks_done =
+        processed_blocks.fetch_add(1, std::memory_order_relaxed) + 1;
+
+    // Отправляем сигнал прогресса только каждые 5% или если прошло 200мс
+    if (blocks_done == total_blocks || blocks_done % (total_blocks / 20) == 0 ||
+        progress_timer.elapsed() > 200) {
+      QMutexLocker locker(&progress_mutex);
+      if (progress_timer.elapsed() > 200) {
+        emit send_progress(pixels + processed_pixels.load());
+        progress_timer.restart();
+      }
     }
-    QImage image = getPixmap(blured_image_label_).toImage();
-    if (!image.save(filename, format.toUtf8().constData())) {
-      ModalDialog::show(dialog_type::error, err,
-                        "Ошибка сохранения изображения");
+  };
+
+  // Создаем вектор индексов блоков
+  QVector<int> block_indices;
+  for (int i = 0; i < total_blocks; i++) {
+    block_indices.append(i);
+  }
+
+  // Запускаем параллельную обработку блоков
+  QtConcurrent::blockingMap(block_indices, process_block);
+
+  // Обновляем общий счетчик пикселей
+  pixels += processed_pixels.load();
+
+  // Финальное обновление прогресса
+  emit send_progress(pixels);
+
+  if (QThread::currentThread()->isInterruptionRequested()) return img;
+  return result;
+}
+
+QImage BluredImage::apply_blur_pass_one_thread(const QImage &img,
+                                               const OneDKernel &kernel,
+                                               bool horizontal, int &pixels) {
+  QImage result = img;
+
+  int img_height = img.height();
+  int img_width = img.width();
+
+  int max_size = img.height() * img.width() * 2;
+  int step = max_size / 100;
+
+  int kernel_size = kernel.get_kernel_size();
+  int radius = kernel_size / 2;
+  for (int y = 0; y < img_height; y++) {
+    for (int x = 0; x < img_width; x++) {
+      if (!QThread::currentThread()->isInterruptionRequested()) {
+        double r = 0, g = 0, b = 0;
+        for (int i = -radius; i <= radius; i++) {
+          int px, py;
+          if (horizontal) {
+            px = qBound(0, x + i, img_width - 1);
+            py = y;
+          } else {
+            px = x;
+            py = qBound(0, y + i, img_height - 1);
+          }
+          QRgb pixel = img.pixel(px, py);
+          double weight = kernel.get_kernel_value(i + radius);
+          apply_kernel_on_pixel(weight, pixel, r, g, b);
+        }
+        pixels++;
+
+        if (pixels % step == 0 || pixels >= max_size)
+          emit send_progress(pixels);
+        result.setPixel(x, y, qRgb(r, g, b));
+      } else {
+        return img;
+      }
     }
-  }
-}
-
-void MainWindow::blur_image() {
-  if (original_image_.isNull()) {
-    ModalDialog::show(dialog_type::error, err,
-                      "Отсутствует файл для обработки");
-    return;
-  }
-  if (!getPixmap(raw_image_label_).isNull()) {
-    QImage new_img = getPixmap(raw_image_label_).toImage();
-    OneDKernel kernel = OneDKernel(radius_panel_->get_radius());
-
-    ProgressBarBlur *prg = new ProgressBarBlur(this);
-    BluredImage *blured_img = new BluredImage();
-    QThread *thread = new QThread();
-
-    set_blur_connections(prg, blured_img, new_img, thread, kernel);
-    blured_img->is_one_thread_mode(radius_panel_->is_one_thread_mode());
-    blured_img->moveToThread(thread);
-
-    prg->run_progress();
-    thread->start();
-  } else {
-    ModalDialog::show(dialog_type::error, err,
-                      "Отсутствует файл для обработки");
-  }
-}
-
-void MainWindow::open_about_tab() {
-  QString file_name = ":/text/resources/about.txt";
-  QFile file(file_name);
-  if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
-    ModalDialog::show(dialog_type::error, err,
-                      "Ошибка чтения файла о программе");
-  else {
-    QTextStream in(&file);
-    QString about_txt = in.readAll();
-    file.close();
-    ModalDialog::show(dialog_type::info, about, about_txt);
-  }
-}
-
-void MainWindow::update_radius(unsigned short radius) {
-  current_radius_ = radius;
-  blur_image();
-}
-
-void MainWindow::block_saving() { is_save_available_ = false; }
-
-void MainWindow::enable_to_save() { is_save_available_ = true; }
-
-bool MainWindow::check_image(const QImage &img) {
-  bool result = false;
-  if (img.isNull())
-    ModalDialog::show(dialog_type::error, err, "Ошибка загрузки изображения");
-  else {
-    int bpp_depth = img.bitPlaneCount();
-    if (bpp_depth == static_cast<int>(BPP::bpp_8) ||
-        bpp_depth == static_cast<int>(BPP::bpp_24))
-      result = true;
-    else
-      ModalDialog::show(dialog_type::error, err,
-                        "Ошибка глубины цвета изображения");
   }
   return result;
+}
+
+void BluredImage::apply_kernel_on_pixel(const double &weight, QRgb &pixel,
+                                        double &r, double &g, double &b) {
+  r += qRed(pixel) * weight;
+  g += qGreen(pixel) * weight;
+  b += qBlue(pixel) * weight;
 }
