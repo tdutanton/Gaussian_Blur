@@ -2,11 +2,6 @@
 
 void BluredImage::process_image(const QImage &img, const OneDKernel &kernel,
                                 QObject *parent) {
-  if (QThread::currentThread()->isInterruptionRequested()) {
-    emit show_error("Обработка отменена");
-    emit process_complete();
-    return;
-  }
   QImage result = create_blured_image(img, kernel);
   if (!QThread::currentThread()->isInterruptionRequested()) {
     blured_image_ = result;
@@ -33,6 +28,8 @@ QImage BluredImage::create_blured_image(const QImage &img,
   if (need_bpp_convert(get_image_bpp(result))) convert_bpp(result);
   emit set_max_progress(img.height() * img.width() * 2);
   int pixels_count{0};
+  using BlurPassFunctionPtr =
+      QImage (BluredImage::*)(const QImage &, const OneDKernel &, bool, int &);
   BlurPassFunctionPtr blur_ptr =
       (one_thread_mode_ == true) ? &BluredImage::apply_blur_pass_one_thread
                                  : &BluredImage::apply_blur_pass_multithread;
